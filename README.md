@@ -38,3 +38,6 @@
 
 ## 🎨 使用示例 (Example)
 
+<img width="811" height="305" alt="image" src="https://github.com/user-attachments/assets/5bebc8bf-3cf3-4819-8049-219462f99c63" />
+<img width="807" height="731" alt="image" src="https://github.com/user-attachments/assets/56f5ae00-8a58-48b5-867a-970132a108f9" />
+
