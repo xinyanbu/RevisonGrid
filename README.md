@@ -1,7 +1,8 @@
 # 🐙 RevisonGrid
 🐙 RevisonGrid is an personal planning system that turns goals into actionable daily execution.  Beyond priority management, habit tracking, and drag-and-drop scheduling, it features a smart auto-planning engine: for quantifiable goals, users simply choose working days per week, and the system automatically distributes tasks across the calendar.
 
-> 告别繁琐的日历应用和涣散的备考计划。这是一款专为「多线程硬核备考」与「复杂项目推进」打造的极简前端追踪系统。毕业季，考公、论文、找工作八手抓👋，仍然有条不紊地掌控你的每一项任务。
+> 告别繁琐的日历应用和涣散的备考计划。这是一款专为「多线程硬核备考」与「复杂项目推进」打造的极简前端追踪系统。
+> 毕业季，考公、论文、找工作八手抓👋，仍然有条不紊地掌控你的每一项任务。
 
 
 ## ✨ 项目亮点 (Key Features)
