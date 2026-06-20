@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan!t 🪐</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ================= 屏幕端全局样式 ================= */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f4f5; 
+            color: #18181b; 
+            font-size: 12px;
+        }
+
+        /* 极致紧凑表格样式 */
+        .excel-table {
+            border-collapse: collapse;
+            width: 100%;
+            table-layout: fixed;
+            background-color: #ffffff;
+        }
+        .excel-table th, .excel-table td {
+            border: 1px solid #d4d4d8; 
+            padding: 4px 6px;
+            text-align: center;
+            height: 34px; 
+        }
+        .excel-table td:not(.dropdown-cell) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .excel-table th {
+            background-color: #f4f4f5;
+            color: #27272a;
+            font-weight: 600;
+        }
+        .excel-table th.weekday-hdr {
+            background-color: #e4e4e7;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* 无感行内编辑样式 */
+        .inline-edit {
+            background: transparent;
+            border: 1px dashed transparent;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.2s;
+            color: inherit;
+        }
+        .inline-edit:focus, .inline-edit:hover {
+            border-bottom-color: #d4d4d8;
+        }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
+        }
+
+        /* 精致下拉菜单组件 */
+        .dropdown-cell { position: relative; overflow: visible !important; padding: 0 !important; }
+        .project-input {
+            width: 100%; height: 100%; min-height: 32px; background: transparent; border: none;
+            font-weight: 600; outline: none; padding: 0 8px; text-align: left; color: inherit;
+        }
+        .project-input:focus { background-color: #f8fafc; }
+        .custom-dropdown {
+            position: absolute; top: 100%; left: -1px; width: calc(100% + 2px);
+            max-height: 160px; overflow-y: auto; background-color: #ffffff;
+            border: 1px solid #94a3b8; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 50; display: none; text-align: left; border-radius: 0 0 4px 4px;
+        }
+        .custom-dropdown.active { display: block; }
+        .custom-dropdown-item {
+            padding: 6px 8px; color: #334155; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+        }
+        .custom-dropdown-item:hover { background-color: #f8fafc; color: #0f172a; font-weight: 500; }
+
+        /* ======== 单元格拖拽交互 ======== */
+        .cell-input-wrapper { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            transition: all 0.2s;
+        }
+        .cell-input {
+            width: 100%; height: 100%; background: transparent; border: none;
+            text-align: center; outline: none; font-weight: 500;
+            position: absolute; inset: 0; color: inherit;
+        }
+        .cell-input:focus { background-color: #f8fafc; box-shadow: inset 0 0 0 1px #cbd5e1; z-index: 20; }
+        
+        .drag-handle {
+            position: absolute; left: 0; top: 0; bottom: 0; width: 14px;
+            cursor: grab; display: flex; align-items: center; justify-content: center;
+            color: #94a3b8; opacity: 0; transition: opacity 0.2s; z-index: 10;
+            background: linear-gradient(90deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 100%);
+        }
+        .drag-handle:active { cursor: grabbing; }
+        .cell-input-wrapper:hover .drag-handle { opacity: 1; }
+        
+        .drag-over {
+            box-shadow: inset 0 0 0 2px #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+
+        /* 习惯打卡 */
+        .habit-cell { cursor: pointer; font-size: 14px; font-weight: bold; user-select: none; }
+        .habit-none { background-color: #ffffff; color: transparent; }
+        .habit-done { background-color: #eff6ff; color: #2563eb; } 
+        .habit-skip { background-color: #fef2f2; color: #dc2626; } 
+
+        ::-webkit-scrollbar { height: 6px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #f4f4f5; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+
+        /* ================= 🖨️ 打印导出 PDF 专用样式 ================= */
+        @media print {
+            @page { size: A4 landscape; margin: 10mm; }
+            
+            body, html { 
+                background-color: #ffffff !important; 
+                padding: 0 !important; 
+                margin: 0 !important;
+                color: #000000 !important;
+            }
+            
+            * { 
+                font-family: "Microsoft YaHei", "SimHei", "Arial", sans-serif !important;
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+                color-adjust: exact !important;
+                background-image: none !important;
+            }
+            
+            /* 隐藏不需要打印的元素 */
+            .no-print, #month-switcher, #export-controls, .drag-handle, .custom-dropdown { 
+                display: none !important; 
+            }
+            
+            /* 移除阴影和装饰 */
+            .shadow-sm, .shadow-xs { box-shadow: none !important; }
+            
+            /* ========== 关键修复：所有文本元素的颜色和可见性 ========== */
+            
+            /* 所有文本必须黑色和不透明 */
+            h1, h2, h3, h4, h5, h6, p, span, div, td, th, li, label {
+                color: #000000 !important;
+                background-color: transparent !important;
+            }
+            
+            /* 表格样式 */
+            table, thead, tbody, tr {
+                border-color: #000000 !important;
+                background-color: #ffffff !important;
+            }
+            
+            th {
+                background-color: #f4f4f5 !important;
+                color: #000000 !important;
+                font-weight: bold !important;
+                border: 1px solid #000000 !important;
+            }
+            
+            td {
+                color: #000000 !important;
+                background-color: #ffffff !important;
+                border: 1px solid #cccccc !important;
+            }
+            
+            /* ========== 最关键修复：输入框转换为可见文本 ========== */
+            
+            /* 隐藏所有输入框光标和边框 */
+            input, textarea, select {
+                border: none !important;
+                outline: none !important;
+                -webkit-appearance: none !important;
+                appearance: none !important;
+                background: transparent !important;
+                color: #000000 !important;
+                font-size: 12px !important;
+                font-weight: inherit !important;
+                font-family: "Microsoft YaHei", "SimHei", "Arial", sans-serif !important;
+            }
+            
+            /* 输入框在打印时显示为纯文本 */
+            input::placeholder { 
+                color: transparent !important;
+                display: none !important;
+            }
+            
+            /* 移除输入框的所有可视化元素 */
+            input::-webkit-input-placeholder { 
+                color: transparent !important; 
+            }
+            input:-moz-placeholder { 
+                color: transparent !important; 
+            }
+            
+            /* 按钮在打印时隐藏 */
+            button { display: none !important; }
+            
+            /* 特定输入框样式覆盖 */
+            .inline-edit {
+                color: #000000 !important;
+                background: transparent !important;
+                border: none !important;
+            }
+            
+            .cell-input {
+                color: #000000 !important;
+                background: transparent !important;
+            }
+            
+            .project-input {
+                color: #000000 !important;
+                background: transparent !important;
+                font-weight: 600 !important;
+            }
+            
+            /* 禁用模式下的输入框也显示 */
+            input:disabled {
+                color: #000000 !important;
+                background: transparent !important;
+                opacity: 1 !important;
+            }
+            
+            /* 特殊处理：确保value显示 */
+            input[type="text"], 
+            input[type="number"] {
+                color: #000000 !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                display: inline !important;
+            }
+            
+            /* 移除背景色强制白色 */
+            .bg-zinc-50, .bg-red-50, .bg-blue-50, .bg-white {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            
+            .text-zinc-700, .text-zinc-800, .text-zinc-400 {
+                color: #000000 !important;
+            }
+            
+            .text-red-700, .text-blue-800, .text-red-800 {
+                color: #000000 !important;
+            }
+            
+            /* 处理行颜色 */
+            tr:nth-child(even) {
+                background-color: #ffffff !important;
+            }
+            
+            tr:nth-child(odd) {
+                background-color: #f9f9f9 !important;
+            }
+            
+            /* 隐藏selected/focus状态 */
+            input:focus { 
+                box-shadow: none !important;
+                outline: none !important;
+            }
+            
+            /* 强制显示打印标题 */
+            .hidden.print\\:block {
+                display: block !important;
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            
+            body.print-mode-week .week-block:not(.print-target-week) { 
+                display: none !important; 
+            }
+            
+            /* 最后的大招：强制所有内容可见 */
+            * {
+                visibility: visible !important;
+                opacity: 1 !important;
+                clip: auto !important;
+                clip-path: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="max-w-[1600px] mx-auto space-y-4">
+        
+        <div class="bg-white border border-zinc-300 p-3 shadow-sm rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3 no-print">
+            <div>
+                <h1 class="text-xl font-bold text-zinc-800 tracking-tight" id="title-year-month">
+                    <span class="text-blue-600">Plan!t 🪐</span>
+                </h1>
+            </div>
+            <div class="flex flex-wrap gap-1 bg-zinc-100 p-1 rounded border border-zinc-200" id="month-switcher"></div>
+            
+            <div class="flex gap-2" id="export-controls">
+                <button onclick="printPDF('week')" class="px-3 py-1.5 bg-white border border-zinc-300 text-zinc-700 rounded text-xs font-medium hover:bg-zinc-50 transition">
+                    🖨️ 打印选定周
+                </button>
+                <button onclick="printPDF('month')" class="px-3 py-1.5 bg-white border border-zinc-300 text-zinc-700 rounded text-xs font-medium hover:bg-zinc-50 transition">
+                    🖨️ 打印全月
+                </button>
+                <button onclick="exportCSV()" class="px-3 py-1.5 bg-zinc-900 text-white rounded text-xs font-medium hover:bg-zinc-800 transition">
+                    导出 CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="hidden print:block text-2xl font-bold text-center mb-4 text-black tracking-wider" style="color: #000000;">
+            Plan!t 🪐 - <span id="print-title-year-month" style="color: #000000;">2026年 6月</span>
+        </div>
+
+        <div class="bg-white border border-zinc-300 p-3 shadow-sm rounded space-y-2">
+            <div class="flex justify-between items-center border-b border-zinc-100 pb-1.5">
+                <span class="font-bold text-zinc-700 text-sm"><i class="text-zinc-400 mr-1">■</i>Top Priorities</span>
+                <div class="flex items-center gap-1.5 text-xs no-print">
+                    <input type="color" id="new-p-color" value="#2563eb" title="定制目标专属色彩" class="w-6 h-6 p-0 border-0 cursor-pointer bg-transparent rounded">
+                    <input type="text" id="new-p-name" placeholder="目标项目名称" class="border border-zinc-300 px-2 py-1 rounded w-36 outline-none focus:border-zinc-500">
+                    <input type="text" id="new-p-desc" placeholder="描述细节" class="border border-zinc-300 px-2 py-1 rounded w-40 outline-none focus:border-zinc-500">
+                    <input type="number" id="new-p-total" placeholder="总计数量" class="border border-zinc-300 px-2 py-1 rounded w-28 outline-none focus:border-zinc-500">
+                    <button onclick="addNewPriority()" class="bg-zinc-800 text-white px-3 py-1 rounded hover:bg-zinc-700 font-medium transition">新增目标</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="priorities-grid">
+                </div>
+        </div>
+
+        <div class="bg-white border border-zinc-300 shadow-sm rounded overflow-x-auto" id="calendar-container">
+            </div>
+
+        <div class="bg-white border border-zinc-300 shadow-sm rounded overflow-hidden mt-4">
+            <div class="bg-zinc-900 text-white px-3 py-2 font-bold text-xs flex justify-between items-center">
+                <span>Habit Tracker</span>
+                <div class="flex items-center gap-2 no-print">
+                    <input type="text" id="inline-habit-input" placeholder="输入新习惯..." class="px-2 py-1 text-xs text-zinc-800 border border-zinc-300 rounded outline-none hidden w-32">
+                    <button id="inline-habit-confirm" onclick="confirmNewHabit()" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hidden hover:bg-blue-500 transition">确认</button>
+                    <button id="inline-habit-add" onclick="showHabitInput()" class="text-blue-400 hover:text-blue-300 font-medium">+ 扩充习惯</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="excel-table">
+                    <thead>
+                        <tr id="habit-header">
+                            <th style="width: 140px;" class="bg-zinc-100 font-bold text-zinc-700">习惯清单</th>
+                        </tr>
+                    </thead>
+                    <tbody id="habit-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 核心业务状态 ---
+        let currentMonth = 5; 
+        const year = 2026;
+        const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+        let monthlyPriorities = {
+            0: [], 1: [], 2: [], 3: [], 4: [],
+            5: [
+                { id: 'p1', name: 'Zika 模型优化', desc: '撰写手稿', current: 0, total: 1, color: '#0ea5e9', scheduleDays: [1,2,3,4,5] },
+                { id: 'p3', name: '逻辑推理', desc: '冲刺600题', current: 2, total: 20, color: '#dc2626', scheduleDays: [1,2,3,4,5,6,0] }
+            ],
+            6: [], 7: [], 8: [], 9: [], 10: [], 11: []
+        };
+
+        let globalTrackingStorage = {
+            5: {
+                1: { '逻辑推理': '逻辑推理 01' },
+                2: { '逻辑推理': '逻辑推理 02' }
+            }
+        };
+
+        let habitsList = ['健身爬坡与有氧', 'SAS 数据清洗练习'];
+        let globalHabitStorage = {
+            5: { '1-0': 'done', '2-0': 'skip', '3-0': 'done' }
+        };
+
+        let weeklyRowsCount = {}; 
+        
+        // 拖拽全局状态
+        let draggedItem = null;
+
+        function getWeekNumber(y, m, d) {
+            const date = new Date(y, m, d);
+            date.setHours(0, 0, 0, 0);
+            date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+            const week1 = new Date(date.getFullYear(), 0, 4);
+            return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        }
+
+        function generateWeeksArray(m) {
+            let firstDay = new Date(year, m, 1);
+            let totalDays = monthDays[m];
+            let startIdx = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+            
+            let weeks = [];
+            let currentWeek = Array(7).fill(null);
+            let day = 1;
+            for (let i = startIdx; i < 7; i++) currentWeek[i] = day++;
+            weeks.push(currentWeek);
+            
+            while (day <= totalDays) {
+                currentWeek = Array(7).fill(null);
+                for (let i = 0; i < 7 && day <= totalDays; i++) currentWeek[i] = day++;
+                weeks.push(currentWeek);
+            }
+            return weeks;
+        }
+
+        // --- 模块 1: 优先级区域 ---
+        function renderPrioritiesArea() {
+            const container = document.getElementById('priorities-grid');
+            const list = monthlyPriorities[currentMonth] || [];
+            if(list.length === 0) {
+                container.innerHTML = `<div class="text-zinc-400 text-xs p-2 col-span-full">暂无本月目标，请在上方选取色彩并新增。</div>`;
+                return;
+            }
+            container.innerHTML = list.map(p => {
+                const total = p.total || 1;
+                const current = p.current || 0;
+                const isDone = current >= total;
+                const progressPct = Math.min((current / total) * 100, 100);
+                const themeColor = p.color || '#3f3f46';
+                const sDays = p.scheduleDays || [1,2,3,4,5,6,0]; 
+
+                const dayButtons = [1,2,3,4,5,6,0].map(d => {
+                    const labels = {1:'一',2:'二',3:'三',4:'四',5:'五',6:'六',0:'日'};
+                    const isActive = sDays.includes(d);
+                    return `<button onclick="toggleScheduleDay('${p.id}', ${d})" class="w-[18px] h-[18px] flex items-center justify-center rounded-[3px] text-[10px] transition-colors ${isActive ? 'bg-zinc-700 text-white' : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'}">${labels[d]}</button>`;
+                }).join('');
+
+                // 动态渲染 +1 +5 +10 按钮
+                let incrementBtns = `<button onclick="incrementPriority('${p.id}', 1)" class="px-2 py-0.5 bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 rounded shadow-sm transition active:scale-95 font-bold">+1</button>`;
+                if (total >= 5) incrementBtns += `<button onclick="incrementPriority('${p.id}', 5)" class="px-2 py-0.5 bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 rounded shadow-sm transition active:scale-95 font-bold">+5</button>`;
+                if (total >= 10) incrementBtns += `<button onclick="incrementPriority('${p.id}', 10)" class="px-2 py-0.5 bg-white border border-zinc-200 hover:bg-zinc-100 text-zinc-700 rounded shadow-sm transition active:scale-95 font-bold">+10</button>`;
+
+                return `
+                <div class="bg-zinc-50 p-3 rounded flex flex-col gap-1.5 shadow-xs relative transition-colors duration-300 border-l-[5px]" style="border-left-color: ${themeColor}; border-top: 1px solid #e4e4e7; border-right: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7;">
+                    ${isDone ? `<div class="absolute top-1 right-2 font-extrabold text-xl drop-shadow-sm" style="color: ${themeColor}">✓</div>` : ''}
+                    <input class="inline-edit font-bold truncate text-base pr-6" style="color: ${themeColor}" value="${p.name}" placeholder="项目名称" onchange="updatePriorityObj('${p.id}', 'name', this.value)">
+                    <input class="inline-edit text-zinc-500 text-xs" value="${p.desc}" placeholder="描述(如: 600题)" onchange="updatePriorityObj('${p.id}', 'desc', this.value)">
+                    
+                    <div class="flex items-center gap-1 mt-1 text-xs text-zinc-600">
+                        <span>当前:</span>
+                        <input type="number" class="inline-edit w-10 text-center font-bold text-zinc-800 bg-white border border-zinc-200 rounded py-0.5" value="${current}" onchange="updatePriorityObj('${p.id}', 'current', this.value)">
+                        <span>/ 总计:</span>
+                        <input type="number" class="inline-edit w-10 text-center bg-transparent py-0.5" value="${total}" onchange="updatePriorityObj('${p.id}', 'total', this.value)">
+                        
+                        <div class="ml-auto flex gap-1 no-print">
+                            ${incrementBtns}
+                        </div>
+                    </div>
+                    
+                    <div class="w-full h-2 bg-zinc-200 rounded-full mt-1.5 overflow-hidden">
+                        <div class="h-full transition-all duration-300" style="width: ${progressPct}%; background-color: ${themeColor}"></div>
+                    </div>
+
+                    <div class="mt-2 pt-2 border-t border-zinc-200 flex flex-col gap-2 no-print">
+                        <div class="flex items-center gap-1.5 text-xs flex-wrap">
+                            <span class="text-zinc-500 font-medium">排期设置</span>
+                            <span class="text-zinc-400 ml-1">起始日:</span>
+                            <input type="number" id="start-${p.id}" value="1" min="1" max="31" class="w-10 h-6 text-center bg-white border border-zinc-300 rounded outline-none focus:border-blue-500">
+                            <span class="text-zinc-400 ml-1">逢:</span>
+                            
+                            <div class="flex gap-[2px]">
+                                ${dayButtons}
+                            </div>
+                            
+                            <div class="ml-auto flex gap-1.5 w-full mt-1 justify-end">
+                                <button onclick="clearSchedule('${p.id}')" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-[3px] transition font-medium active:scale-95 text-xs">清空排期</button>
+                                <button onclick="executeSchedule('${p.id}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-[3px] hover:bg-blue-500 transition font-medium active:scale-95 text-xs">生成排期</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function toggleScheduleDay(id, dayOfWeek) {
+            let p = monthlyPriorities[currentMonth].find(x => x.id === id);
+            if(!p) return;
+            if(!p.scheduleDays) p.scheduleDays = [1,2,3,4,5,6,0];
+            
+            if(p.scheduleDays.includes(dayOfWeek)) {
+                p.scheduleDays = p.scheduleDays.filter(d => d !== dayOfWeek);
+            } else {
+                p.scheduleDays.push(dayOfWeek);
+            }
+            saveToLocalStorage();
+            renderPrioritiesArea();
+        }
+
+        function executeSchedule(id) {
+            let p = monthlyPriorities[currentMonth].find(x => x.id === id);
+            if(!p) return;
+            
+            let startDay = parseInt(document.getElementById(`start-${p.id}`).value) || 1;
+            let daysArr = p.scheduleDays || [1,2,3,4,5,6,0]; 
+            if(daysArr.length === 0) {
+                alert("请至少选择一个排期日！"); return;
+            }
+            
+            let total = p.total;
+            let count = 1;
+            
+            for(let d = startDay; d <= monthDays[currentMonth] && count <= total; d++) {
+                let date = new Date(year, currentMonth, d);
+                let dayOfWeek = date.getDay(); 
+                
+                if(daysArr.includes(dayOfWeek)) {
+                    if(!globalTrackingStorage[currentMonth]) globalTrackingStorage[currentMonth] = {};
+                    if(!globalTrackingStorage[currentMonth][d]) globalTrackingStorage[currentMonth][d] = {};
+                    
+                    let text = `${p.name} ${String(count).padStart(2, '0')}`;
+                    globalTrackingStorage[currentMonth][d][p.name] = text;
+                    count++;
+                }
+            }
+            
+            let weeks = generateWeeksArray(currentMonth);
+            weeks.forEach((week, wIdx) => {
+                const weekKey = `${currentMonth}-${wIdx}`;
+                let hasTaskThisWeek = week.some(d => d && globalTrackingStorage[currentMonth] && globalTrackingStorage[currentMonth][d] && globalTrackingStorage[currentMonth][d][p.name]);
+                
+                if(hasTaskThisWeek) {
+                    if (!weeklyRowsCount[weekKey]) weeklyRowsCount[weekKey] = 3;
+                    let isAssigned = false;
+                    let firstEmptyRowIdx = -1;
+                    
+                    for(let rowIdx = 0; rowIdx < weeklyRowsCount[weekKey]; rowIdx++) {
+                        const rowSessionKey = `${weekKey}-${rowIdx}-selectedProject`;
+                        let savedProjName = localStorage.getItem(rowSessionKey) || '';
+                        if (savedProjName === p.name) { isAssigned = true; break; }
+                        if (savedProjName === '' && firstEmptyRowIdx === -1) { firstEmptyRowIdx = rowIdx; }
+                    }
+                    
+                    if (!isAssigned) {
+                        if (firstEmptyRowIdx !== -1) {
+                            localStorage.setItem(`${weekKey}-${firstEmptyRowIdx}-selectedProject`, p.name);
+                        } else {
+                            let newRowIdx = weeklyRowsCount[weekKey];
+                            weeklyRowsCount[weekKey]++;
+                            localStorage.setItem(`${weekKey}-${newRowIdx}-selectedProject`, p.name);
+                        }
+                    }
+                }
+            });
+            
+            saveToLocalStorage();
+            renderModule2Calendar();
+            alert(`✅ 排期成功！已自动分配了 ${count - 1} 个序列任务。`);
+        }
+
+        function clearSchedule(id) {
+            let p = monthlyPriorities[currentMonth].find(x => x.id === id);
+            if(!p) return;
+            if(confirm(`⚠️ 确定要清空「${p.name}」在本月的所有日历排期及打卡记录吗？`)) {
+                for(let d = 1; d <= monthDays[currentMonth]; d++) {
+                    if(globalTrackingStorage[currentMonth] && globalTrackingStorage[currentMonth][d] && globalTrackingStorage[currentMonth][d][p.name]) {
+                        delete globalTrackingStorage[currentMonth][d][p.name];
+                    }
+                }
+                p.current = 0; 
+                saveToLocalStorage();
+                renderPrioritiesArea();
+                renderModule2Calendar();
+            }
+        }
+
+        // 动态累加处理
+        function incrementPriority(id, amount) {
+            let p = monthlyPriorities[currentMonth].find(x => x.id === id);
+            if(p && p.current < p.total) {
+                p.current = Math.min(p.total, p.current + amount);
+                saveToLocalStorage();
+                renderPrioritiesArea(); 
+            }
+        }
+
+        function updatePriorityObj(id, field, val) {
+            let p = monthlyPriorities[currentMonth].find(x => x.id === id);
+            if(p) {
+                p[field] = (field === 'current' || field === 'total') ? Number(val) : val;
+                saveToLocalStorage();
+                renderPrioritiesArea(); 
+                if(field === 'name') renderModule2Calendar(); 
+            }
+        }
+
+        function addNewPriority() {
+            const name = document.getElementById('new-p-name').value.trim();
+            if(!name) return;
+            monthlyPriorities[currentMonth].push({
+                id: 'p_' + Date.now(),
+                name: name,
+                desc: document.getElementById('new-p-desc').value.trim() || '自定义',
+                current: 0,
+                total: Number(document.getElementById('new-p-total').value.trim()) || 10,
+                color: document.getElementById('new-p-color').value || '#2563eb',
+                scheduleDays: [1,2,3,4,5,6,0]
+            });
+            ['name', 'desc', 'total'].forEach(id => document.getElementById(`new-p-${id}`).value = '');
+            renderPrioritiesArea();
+            renderModule2Calendar(); 
+        }
+
+        // ======== 自由拖拽引擎逻辑 ========
+        function handleDragStart(e, day, rowSessionKey) {
+            let projName = localStorage.getItem(rowSessionKey);
+            let text = globalTrackingStorage[currentMonth]?.[day]?.[projName] || '';
+            if (!text) {
+                e.preventDefault();
+                return;
+            }
+            draggedItem = { day, projName, text, rowSessionKey };
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, targetDay, targetRowSessionKey) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (!draggedItem) return;
+
+            let targetProjName = localStorage.getItem(targetRowSessionKey);
+            if (!targetProjName) {
+                alert('不可拖拽至空白分类行，请先在左侧选择对应项目！');
+                return;
+            }
+
+            if (globalTrackingStorage[currentMonth] && globalTrackingStorage[currentMonth][draggedItem.day]) {
+                delete globalTrackingStorage[currentMonth][draggedItem.day][draggedItem.projName];
+            }
+
+            if (!globalTrackingStorage[currentMonth]) globalTrackingStorage[currentMonth] = {};
+            if (!globalTrackingStorage[currentMonth][targetDay]) globalTrackingStorage[currentMonth][targetDay] = {};
+            globalTrackingStorage[currentMonth][targetDay][targetProjName] = draggedItem.text;
+
+            draggedItem = null;
+            saveToLocalStorage();
+            renderModule2Calendar();
+        }
+
+        // --- 模块 2: 项目追踪 ---
+        function renderModule2Calendar() {
+            const container = document.getElementById('calendar-container');
+            const weeks = generateWeeksArray(currentMonth);
+            const currentMonthPriorities = monthlyPriorities[currentMonth] || [];
+            
+            let html = `
+                <table class="excel-table border-none">
+                    <thead>
+                        <tr>
+                            <th style="width: 220px;" class="bg-zinc-800 text-white font-bold text-xs border-r-zinc-600" style="color: #000000;">Project</th>
+                            <th class="weekday-hdr">Mon</th>
+                            <th class="weekday-hdr">Tue</th>
+                            <th class="weekday-hdr">Wed</th>
+                            <th class="weekday-hdr">Thu</th>
+                            <th class="weekday-hdr">Fri</th>
+                            <th class="weekday-hdr">Sat</th>
+                            <th class="weekday-hdr border-l-red-200 text-red-800 bg-red-50">Sun</th>
+                        </tr>
+                    </thead>
+            `;
+            
+            weeks.forEach((week, wIdx) => {
+                const weekKey = `${currentMonth}-${wIdx}`;
+                if (!weeklyRowsCount[weekKey]) weeklyRowsCount[weekKey] = 3; 
+                
+                let firstValidDay = week.find(d => d !== null) || 1;
+                let isoWeekNum = getWeekNumber(year, currentMonth, firstValidDay);
+
+                html += `<tbody class="week-block" data-week="${isoWeekNum}">`;
+                
+                html += `<tr class="bg-zinc-50 border-t-2 border-t-zinc-300">`;
+                html += `<td class="font-bold text-zinc-400 text-right pr-4 uppercase text-[10px] tracking-wider" style="color: #000000;">W${isoWeekNum}</td>`;
+                week.forEach((day, dIdx) => {
+                    let isSun = dIdx === 6;
+                    html += `<td class="font-bold ${isSun ? 'text-red-700 bg-red-50/50' : 'text-zinc-700 bg-white'}" style="color: #000000;">${day ? day + '' : ''}</td>`;
+                });
+                html += `</tr>`;
+
+                for(let rowIdx = 0; rowIdx < weeklyRowsCount[weekKey]; rowIdx++) {
+                    const rowSessionKey = `${weekKey}-${rowIdx}-selectedProject`;
+                    let savedProjName = localStorage.getItem(rowSessionKey) || '';
+                    const dropdownId = `dd-${weekKey}-${rowIdx}`;
+                    
+                    let activeProjObj = currentMonthPriorities.find(x => x.name === savedProjName);
+                    let themeColor = activeProjObj ? activeProjObj.color : '#18181b';
+
+                    html += `<tr>`;
+                    html += `
+                        <td class="dropdown-cell bg-zinc-50">
+                            <input type="text" class="project-input" 
+                                   value="${savedProjName}" 
+                                   style="color: #000000;"
+                                   placeholder="🔍 选择或输入追踪项目"
+                                   onfocus="toggleDropdown('${dropdownId}', true)"
+                                   onblur="setTimeout(() => toggleDropdown('${dropdownId}', false), 150)"
+                                   onchange="saveRowProjectName('${weekKey}', ${rowIdx}, this.value)">
+                            <div id="${dropdownId}" class="custom-dropdown no-print">
+                                ${currentMonthPriorities.map(p => `
+                                    <div class="custom-dropdown-item font-bold" 
+                                         style="color: ${p.color}"
+                                         onmousedown="selectDropdownVal('${weekKey}', ${rowIdx}, '${p.name}')">
+                                         ${p.name}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </td>
+                    `;
+
+                    week.forEach(day => {
+                        if(!day) {
+                            html += `<td class="bg-zinc-100"></td>`;
+                        } else {
+                            if(!globalTrackingStorage[currentMonth]) globalTrackingStorage[currentMonth] = {};
+                            if(!globalTrackingStorage[currentMonth][day]) globalTrackingStorage[currentMonth][day] = {};
+                            let cellVal = savedProjName ? (globalTrackingStorage[currentMonth][day][savedProjName] || '') : '';
+                            let inputId = `cell-${currentMonth}-${day}-${rowIdx}`;
+
+                            html += `
+                                <td class="p-0">
+                                    <div class="cell-input-wrapper"
+                                         ondragover="handleDragOver(event)"
+                                         ondragleave="handleDragLeave(event)"
+                                         ondrop="handleDrop(event, ${day}, '${rowSessionKey}')">
+                                        
+                                        ${cellVal ? `
+                                        <div class="drag-handle no-print" draggable="true" ondragstart="handleDragStart(event, ${day}, '${rowSessionKey}')" title="拖拽移动任务">
+                                            ⋮
+                                        </div>` : ''}
+
+                                        <input type="text" id="${inputId}" class="cell-input text-xs ${cellVal ? 'pl-[14px]' : ''}" 
+                                               value="${cellVal}" 
+                                               style="color: #000000; ${cellVal ? 'background-color: '+themeColor+'15;' : ''}"
+                                               placeholder="-"
+                                               ${!savedProjName ? 'disabled placeholder="-"' : ''}
+                                               onchange="saveCellProgress(${day}, '${rowSessionKey}', this.value)">
+                                    </div>
+                                </td>
+                            `;
+                        }
+                    });
+                    html += `</tr>`;
+                }
+
+                html += `
+                    <tr class="no-print">
+                        <td colspan="8" class="text-left bg-white p-0 border-b border-zinc-200">
+                            <button onclick="addTrackRow('${weekKey}')" class="w-full text-left px-3 py-1 text-[11px] text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition">
+                                + 增加追踪项
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                html += `</tbody>`;
+            });
+
+            html += `</table>`;
+            container.innerHTML = html;
+        }
+
+        function toggleDropdown(id, show) {
+            const el = document.getElementById(id);
+            if(show) el.classList.add('active');
+            else el.classList.remove('active');
+        }
+        function selectDropdownVal(weekKey, rowIdx, val) { saveRowProjectName(weekKey, rowIdx, val); }
+
+        function saveRowProjectName(weekKey, rowIdx, val) {
+            localStorage.setItem(`${weekKey}-${rowIdx}-selectedProject`, val);
+            renderModule2Calendar(); 
+        }
+
+        function saveCellProgress(day, rowSessionKey, text) {
+            let projName = localStorage.getItem(rowSessionKey);
+            if(!projName) return;
+            if(text.trim() === '') {
+                delete globalTrackingStorage[currentMonth][day][projName];
+            } else {
+                globalTrackingStorage[currentMonth][day][projName] = text.trim();
+            }
+            saveToLocalStorage();
+            renderModule2Calendar(); 
+        }
+
+        function addTrackRow(weekKey) {
+            weeklyRowsCount[weekKey] = (weeklyRowsCount[weekKey] || 3) + 1;
+            renderModule2Calendar();
+        }
+
+        // --- 模块 3: Habit Tracker ---
+        function renderHabitMatrix() {
+            const header = document.getElementById('habit-header');
+            const total = monthDays[currentMonth];
+            
+            let headerHtml = `<th style="width: 140px;" class="bg-zinc-800 text-white font-bold" style="color: #000000;">习惯清单</th>`;
+            for (let i = 1; i <= total; i++) {
+                headerHtml += `<th class="p-0 font-medium text-zinc-600 text-[11px]" style="color: #000000;">${i}</th>`;
+            }
+            header.innerHTML = headerHtml;
+
+            const tbody = document.getElementById('habit-body');
+            let bodyHtml = '';
+
+            habitsList.forEach((habit, hIdx) => {
+                bodyHtml += `<tr class="hover:bg-zinc-50 transition">`;
+                bodyHtml += `
+                    <td class="bg-zinc-50 text-left pl-2 p-0">
+                        <input class="inline-edit font-bold text-zinc-700 w-full h-full px-2" value="${habit}" onchange="updateHabitName(${hIdx}, this.value)">
+                    </td>
+                `;
+                for (let day = 1; day <= total; day++) {
+                    if(!globalHabitStorage[currentMonth]) globalHabitStorage[currentMonth] = {};
+                    const key = `${day}-${hIdx}`;
+                    const status = globalHabitStorage[currentMonth][key] || 'none';
+                    
+                    let mark = '';
+                    let css = 'habit-none';
+                    if(status === 'done') { mark = '✓'; css = 'habit-done'; }
+                    if(status === 'skip') { mark = '×'; css = 'habit-skip'; }
+
+                    bodyHtml += `<td class="habit-cell ${css}" onclick="toggleHabitState('${key}')" style="color: #000000;">${mark}</td>`;
+                }
+                bodyHtml += `</tr>`;
+            });
+            tbody.innerHTML = bodyHtml;
+        }
+
+        function updateHabitName(idx, val) {
+            if(val.trim()) { habitsList[idx] = val.trim(); saveToLocalStorage(); }
+        }
+
+        function showHabitInput() {
+            document.getElementById('inline-habit-add').classList.add('hidden');
+            document.getElementById('inline-habit-input').classList.remove('hidden');
+            document.getElementById('inline-habit-confirm').classList.remove('hidden');
+            document.getElementById('inline-habit-input').focus();
+        }
+        function confirmNewHabit() {
+            let val = document.getElementById('inline-habit-input').value.trim();
+            if(val) {
+                habitsList.push(val);
+                saveToLocalStorage();
+                renderHabitMatrix();
+            }
+            document.getElementById('inline-habit-input').value = '';
+            document.getElementById('inline-habit-add').classList.remove('hidden');
+            document.getElementById('inline-habit-input').classList.add('hidden');
+            document.getElementById('inline-habit-confirm').classList.add('hidden');
+        }
+
+        function toggleHabitState(key) {
+            if(!globalHabitStorage[currentMonth]) globalHabitStorage[currentMonth] = {};
+            let current = globalHabitStorage[currentMonth][key] || 'none';
+            if (current === 'none') globalHabitStorage[currentMonth][key] = 'done';
+            else if (current === 'done') globalHabitStorage[currentMonth][key] = 'skip';
+            else delete globalHabitStorage[currentMonth][key];
+            renderHabitMatrix();
+            saveToLocalStorage();
+        }
+
+        // --- CSV 规范化导出 ---
+        function exportCSV() {
+            let csv = 'Date,ProjectName,ProgressText,Type\n';
+            let totalDays = monthDays[currentMonth];
+            let datePrefix = `${year}-${String(currentMonth + 1).padStart(2, '0')}-`;
+
+            for(let d=1; d<=totalDays; d++) {
+                let fullDate = datePrefix + String(d).padStart(2, '0');
+                
+                if(globalTrackingStorage[currentMonth] && globalTrackingStorage[currentMonth][d]) {
+                    Object.keys(globalTrackingStorage[currentMonth][d]).forEach(proj => {
+                        let text = globalTrackingStorage[currentMonth][d][proj];
+                        if(text) csv += `${fullDate},${proj},"${text.replace(/"/g, '""')}",Project\n`;
+                    });
+                }
+                
+                habitsList.forEach((hb, idx) => {
+                    if(globalHabitStorage[currentMonth]) {
+                        let status = globalHabitStorage[currentMonth][`${d}-${idx}`];
+                        if(status && status !== 'none') {
+                            csv += `${fullDate},${hb},${status === 'done' ? '完成' : '跳过'},Habit\n`;
+                        }
+                    }
+                });
+            }
+
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `Plan!t_2026_${currentMonth+1}月_数据矩阵.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function printPDF(mode) {
+            document.getElementById('print-title-year-month').innerText = `2026年 ${currentMonth + 1}月`;
+
+            if (mode === 'month') {
+                window.print();
+            } else if (mode === 'week') {
+                let input = prompt("请输入要打印的周数 (支持多周组合，如: 24 或 24,25 或 24-26):");
+                if (!input) return;
+                
+                let targetWeeks = new Set();
+                try {
+                    input.split(',').forEach(part => {
+                        if (part.includes('-')) {
+                            let [start, end] = part.split('-').map(s => parseInt(s.trim()));
+                            if (!isNaN(start) && !isNaN(end)) {
+                                for(let i = start; i <= end; i++) targetWeeks.add(i.toString());
+                            }
+                        } else {
+                            let w = parseInt(part.trim());
+                            if (!isNaN(w)) targetWeeks.add(w.toString());
+                        }
+                    });
+                } catch(e) {
+                    alert('格式解析错误，请按提示格式输入。');
+                    return;
+                }
+                
+                let blocks = document.querySelectorAll('.week-block');
+                let found = false;
+                blocks.forEach(b => {
+                    if (targetWeeks.has(b.getAttribute('data-week'))) {
+                        b.classList.add('print-target-week');
+                        found = true;
+                    } else {
+                        b.classList.remove('print-target-week');
+                    }
+                });
+
+                if (!found) {
+                    alert('未在当前月份找到指定周数据，请检查输入。');
+                    return;
+                }
+
+                document.body.classList.add('print-mode-week');
+                window.print();
+                
+                setTimeout(() => {
+                    document.body.classList.remove('print-mode-week');
+                    blocks.forEach(b => b.classList.remove('print-target-week'));
+                }, 1000);
+            }
+        }
+
+        function initMonthSwitcher() {
+            const container = document.getElementById('month-switcher');
+            const monthLabels = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+            container.innerHTML = monthLabels.map((m, idx) => `
+                <button onclick="switchActiveMonth(${idx})" id="m-btn-${idx}" 
+                        class="px-2.5 py-1 text-xs font-medium rounded transition ${idx === currentMonth ? 'bg-zinc-900 text-white font-bold' : 'text-zinc-600 hover:bg-zinc-200'}">
+                    ${idx + 1}月
+                </button>
+            `).join('');
+        }
+
+        function switchActiveMonth(targetMonthIdx) {
+            document.getElementById(`m-btn-${currentMonth}`).classList.remove('bg-zinc-900', 'text-white', 'font-bold');
+            document.getElementById(`m-btn-${currentMonth}`).classList.add('text-zinc-600', 'hover:bg-zinc-200');
+            currentMonth = targetMonthIdx;
+            document.getElementById(`m-btn-${currentMonth}`).classList.add('bg-zinc-900', 'text-white', 'font-bold');
+            document.getElementById(`m-btn-${currentMonth}`).classList.remove('text-zinc-600', 'hover:bg-zinc-200');
+            
+            document.getElementById('title-year-month').innerHTML = `<span class="text-blue-600">Plan!t 🪐</span> <span class="text-zinc-400 text-sm ml-2 font-normal">2026年 ${targetMonthIdx + 1}月</span>`;
+            renderPrioritiesArea();
+            renderModule2Calendar();
+            renderHabitMatrix();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('globalTrackingStorage_v13', JSON.stringify(globalTrackingStorage));
+            localStorage.setItem('globalHabitStorage_v13', JSON.stringify(globalHabitStorage));
+            localStorage.setItem('habitsList_v13', JSON.stringify(habitsList));
+            localStorage.setItem('monthlyPriorities_v13', JSON.stringify(monthlyPriorities));
+        }
+
+        function loadFromLocalStorage() {
+            let t = localStorage.getItem('globalTrackingStorage_v13');
+            let h = localStorage.getItem('globalHabitStorage_v13');
+            let l = localStorage.getItem('habitsList_v13');
+            let p = localStorage.getItem('monthlyPriorities_v13');
+            if(t) globalTrackingStorage = JSON.parse(t);
+            if(h) globalHabitStorage = JSON.parse(h);
+            if(l) habitsList = JSON.parse(l);
+            if(p) monthlyPriorities = JSON.parse(p);
+        }
+
+        window.onload = () => {
+            loadFromLocalStorage();
+            initMonthSwitcher();
+            switchActiveMonth(currentMonth); 
+        };
+    </script>
+</body>
+</html>
